@@ -454,9 +454,10 @@ def cleanup():
 
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
     print("=" * 60)
     print("  采购到位率查询系统 v1.0")
-    print("  在浏览器中打开: http://127.0.0.1:5000")
+    print(f"  访问地址: http://127.0.0.1:{port}")
     print("  按 Ctrl+C 停止服务")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)
