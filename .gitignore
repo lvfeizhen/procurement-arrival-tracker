@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 虚拟环境
+venv/
+env/
+
+# 打包产物
+dist/
+build/
+*.spec
+*.exe
+
+# 上传和输出
+uploads/
+outputs/
+
+# 数据文件（含敏感信息不上传）
+*.xlsx
+*.xls
+*.csv
+
+# Excel 临时文件
+~$*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db

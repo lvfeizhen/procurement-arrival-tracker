@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>采购到位率查询系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: #fff;
+            padding: 24px 0;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+        }
+        .header h1 { font-size: 28px; font-weight: 500; letter-spacing: 2px; }
+        .header p { font-size: 14px; opacity: .75; margin-top: 6px; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+
+        /* 上传区域 */
+        .upload-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.06);
+            margin-bottom: 24px;
+        }
+        .upload-section h2 {
+            font-size: 18px;
+            color: #1e3a5f;
+            margin-bottom: 8px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e8ecf1;
+        }
+        .upload-section .hint {
+            font-size: 13px;
+            color: #8899aa;
+            margin-bottom: 24px;
+        }
+        .file-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .file-label {
+            width: 180px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334455;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .file-label .required { color: #e53e3e; margin-left: 2px; }
+        .file-input-wrapper {
+            flex: 1;
+            min-width: 280px;
+            position: relative;
+        }
+        .file-input-wrapper input[type="file"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #4a5568;
+            background: #fafbfc;
+            cursor: pointer;
+            transition: border-color .2s;
+        }
+        .file-input-wrapper input[type="file"]:hover {
+            border-color: #4299e1;
+            background: #f0f7ff;
+        }
+        .file-tag {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-weight: normal;
+        }
+        .tag-pr { background: #ebf8ff; color: #2b6cb0; }
+        .tag-po { background: #faf5ff; color: #6b46c1; }
+        .tag-commit { background: #fff5f5; color: #c05621; }
+
+        .btn-row { text-align: center; margin-top: 28px; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all .25s;
+            letter-spacing: 1px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2b6cb0, #3182ce);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(49,130,206,.35);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(49,130,206,.45); }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .btn-download {
+            background: linear-gradient(135deg, #38a169, #48bb78);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(56,161,105,.35);
+        }
+        .btn-download:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(56,161,105,.45); }
+
+        /* 进度条 */
+        .progress-section { display: none; text-align: center; margin: 20px 0; }
+        .spinner {
+            display: inline-block;
+            width: 40px; height: 40px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #3182ce;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-text { color: #4a5568; margin-top: 12px; font-size: 14px; }
+
+        /* 结果区域 */
+        .result-section { display: none; }
+
+        /* 汇总卡片 */
+        .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 800px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        }
+        .card .number { font-size: 32px; font-weight: 700; margin: 6px 0; }
+        .card .label { font-size: 13px; color: #718096; }
+        .card-total .number { color: #2d3748; }
+        .card-not .number { color: #e53e3e; }
+        .card-partial .number { color: #dd6b20; }
+        .card-arrived .number { color: #38a169; }
+        .card-rate .number { color: #2b6cb0; }
+
+        /* 汇总表 */
+        .summary-table-wrapper {
+            background: #fff;
+            border-radius: 10px;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,.05);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .table-header {
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3a5f;
+            border-bottom: 1px solid #e8ecf1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f7fafc;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        td {
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 14px;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-not { background: #fff5f5; color: #c53030; }
+        .badge-partial { background: #fffaf0; color: #c05621; }
+        .badge-arrived { background: #f0fff4; color: #2f855a; }
+
+        .download-bar {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .download-bar .info { font-size: 14px; color: #4a5568; }
+
+        .error-msg {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .footer { text-align: center; color: #a0aec0; font-size: 12px; margin: 40px 0 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📊 采购到位率查询系统</h1>
+    <p>上传报表 → 自动匹配 → 一键下载分析结果</p>
+</div>
+
+<div class="container">
+
+    <!-- 上传区 -->
+    <div class="upload-section" id="uploadSection">
+        <h2>📤 上传报表文件</h2>
+        <p class="hint">请上传以下3个 Excel 文件，系统将自动匹配并计算到位率</p>
+
+        <div class="file-row">
+            <div class="file-label">
+                PR 报表<span class="required">*</span>
+                <span class="file-tag tag-pr">文件名含 PR</span>
+            </div>
+            <div class="file-input-wrapper">
+                <input type="file" id="prFile" accept=".xlsx,.xls">
+            </div>
+        </div>
+
+        <div class="file-row">
+            <div class="file-label">
+                PurchaseOrder 报表<span class="required">*</span>
+                <span class="file-tag tag-po">文件名含 PurchaseOrder</span>
+            </div>
+            <div class="file-input-wrapper">
+                <input type="file" id="poFile" accept=".xlsx,.xls">
+            </div>
+        </div>
+
+        <div class="file-row">
+            <div class="file-label">
+                采购承诺导出数据<span class="required">*</span>
+                <span class="file-tag tag-commit">文件名含 采购承诺导出数据</span>
+            </div>
+            <div class="file-input-wrapper">
+                <input type="file" id="commitFile" accept=".xlsx,.xls">
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalyze()">
+                🔍 开始分析
+            </button>
+        </div>
+
+        <div class="progress-section" id="progressSection">
+            <div class="spinner"></div>
+            <p class="progress-text">正在分析中，请稍候...</p>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-section" id="resultSection">
+
+        <!-- 概览卡片 -->
+        <div class="cards">
+            <div class="card card-total">
+                <div class="label">匹配总数</div>
+                <div class="number" id="cardTotal">-</div>
+            </div>
+            <div class="card card-not">
+                <div class="label">未到位</div>
+                <div class="number" id="cardNot">-</div>
+            </div>
+            <div class="card card-partial">
+                <div class="label">部分未到位</div>
+                <div class="number" id="cardPartial">-</div>
+            </div>
+            <div class="card card-arrived">
+                <div class="label">已到位</div>
+                <div class="number" id="cardArrived">-</div>
+            </div>
+            <div class="card card-rate">
+                <div class="label">综合到位率</div>
+                <div class="number" id="cardRate">-</div>
+            </div>
+        </div>
+
+        <!-- 汇总表 -->
+        <div class="summary-table-wrapper">
+            <div class="table-header">📋 到位状态汇总</div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>到位状态</th>
+                            <th>行数</th>
+                            <th>采购数量合计</th>
+                            <th>累计实收合计</th>
+                            <th>未到位数量合计</th>
+                            <th>综合到位率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 到期履约汇总 -->
+        <div class="summary-table-wrapper" id="overdueSection">
+            <div class="table-header">⏰ 到期履约情况（承诺收货日期 ≤ 今天）</div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>到位状态</th>
+                            <th>行数</th>
+                            <th>采购数量合计</th>
+                            <th>累计实收合计</th>
+                            <th>未到位数量合计</th>
+                            <th>综合到位率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overdueTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 下载区 -->
+        <div class="download-bar">
+            <span class="info">✅ 分析完成！共 <strong id="downloadTotal">-</strong> 条匹配记录，未匹配 <strong id="downloadUnmatched">-</strong> 条</span>
+            <button class="btn btn-download" id="downloadBtn" onclick="downloadResult()">
+                📥 下载 Excel 报表
+            </button>
+        </div>
+    </div>
+
+    <div class="footer">采购到位率查询系统 v1.0 | 内部使用</div>
+</div>
+
+<script>
+let downloadUrl = '';
+
+function startAnalyze() {
+    const prFile = document.getElementById('prFile').files[0];
+    const poFile = document.getElementById('poFile').files[0];
+    const commitFile = document.getElementById('commitFile').files[0];
+
+    if (!prFile || !poFile || !commitFile) {
+        showError('请上传全部3个文件后再开始分析');
+        return;
+    }
+
+    // 隐藏错误，显示进度
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = true;
+
+    const formData = new FormData();
+    formData.append('pr_file', prFile);
+    formData.append('po_file', poFile);
+    formData.append('commit_file', commitFile);
+
+    fetch('/analyze', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = false;
+
+            if (!data.success) {
+                showError(data.error);
+                return;
+            }
+
+            downloadUrl = data.download_url;
+
+            // 填充概览卡片
+            document.getElementById('cardTotal').textContent = data.summary.total;
+            document.getElementById('cardNot').textContent = data.summary.not_arrived;
+            document.getElementById('cardPartial').textContent = data.summary.partial;
+            document.getElementById('cardArrived').textContent = data.summary.arrived;
+            document.getElementById('cardRate').textContent = data.summary.overall_rate;
+
+            // 填充汇总表
+            buildSummaryTable('summaryTable', data.summary.detail_rows);
+            buildSummaryTable('overdueTable', data.overdue.detail_rows);
+
+            document.getElementById('downloadTotal').textContent = data.summary.total;
+            document.getElementById('downloadUnmatched').textContent = data.summary.unmatched;
+
+            document.getElementById('resultSection').style.display = 'block';
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(err => {
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = false;
+            showError('网络错误：' + err.message);
+        });
+}
+
+function buildSummaryTable(tableId, rows) {
+    const tbody = document.getElementById(tableId);
+    const badges = {'未到位':'badge-not','部分未到位':'badge-partial','已到位':'badge-arrived','合计':''};
+
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">暂无数据</td></tr>';
+        return;
+    }
+
+    let html = '';
+    rows.forEach(row => {
+        const badge = badges[row['到位状态']] || '';
+        const badgeHtml = badge ? `<span class="status-badge ${badge}">${row['到位状态']}</span>` : row['到位状态'];
+        html += `<tr>
+            <td>${badgeHtml}</td>
+            <td>${(row['行数'] || 0).toLocaleString()}</td>
+            <td>${(row['采购数量合计'] || 0).toLocaleString()}</td>
+            <td>${(row['累计实收数量合计'] || 0).toLocaleString()}</td>
+            <td>${(row['未到位数量合计'] || 0).toLocaleString()}</td>
+            <td>${formatRate(row['综合到位率'])}</td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function formatRate(val) {
+    if (val === undefined || val === null) return '-';
+    if (typeof val === 'number') return (val * 100).toFixed(2) + '%';
+    return val;
+}
+
+function downloadResult() {
+    if (downloadUrl) window.open(downloadUrl, '_blank');
+}
+
+function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
